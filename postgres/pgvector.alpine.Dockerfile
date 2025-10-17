@@ -25,5 +25,6 @@ LABEL maintainer="Avinash Kumar avi410vikram@gmail.com"
 COPY --from=build /usr/local/lib/postgresql /usr/local/lib/postgresql
 COPY --from=build /usr/local/share/postgresql /usr/local/share/postgresql
 COPY --from=build /usr/local/include/postgresql /usr/local/include/postgresql
+COPY postgres/init/init_pgvector.sql /docker-entrypoint-initdb.d/init.sql
 
 CMD ["postgres"]
