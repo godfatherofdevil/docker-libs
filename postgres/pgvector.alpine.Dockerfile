@@ -10,8 +10,8 @@ RUN apk update && \
     linux-headers \
     clang19 \
     llvm19 \
-    make \
-    && cd /tmp/pgvector && \
+    make && \
+    cd /tmp/pgvector && \
     make clean && \
     make OPTFLAGS="" && \
     make install && \
