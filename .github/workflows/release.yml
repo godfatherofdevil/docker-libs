@@ -6,7 +6,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  USERNAME: godfatherofdevil
 
 jobs:
   build-and-push-image:
@@ -16,9 +15,9 @@ jobs:
       matrix:
         include:
           - dockerfile: ./postgres/pgvector.alpine.Dockerfile
-            image: ghcr.io/${{ env.USERNAME }}/postgres-pgvector:18-alpine
+            image: ghcr.io/godfatherofdevil/postgres-pgvector:18-alpine
           - dockerfile: ./postgres/logical.alpine.Dockerfile
-            image: ghcr.io/${{ env.USERNAME }}/postgres-wal2json:18-alpine
+            image: ghcr.io/godfatherofdevil/postgres-wal2json:18-alpine
     permissions:
       contents: read
       packages: write
