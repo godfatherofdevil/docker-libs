@@ -6,11 +6,12 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  USERNAME: godfatherofdevil
 
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
+    env:
+      USERNAME: godfatherofdevil
     strategy:
       fail-fast: false
       matrix:
