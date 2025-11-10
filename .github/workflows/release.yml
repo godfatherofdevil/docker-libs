@@ -11,9 +11,9 @@ jobs:
       matrix:
         include:
           - dockerfile: ./postgres/pgvector.alpine.Dockerfile
-            image: ghcr.io/godfatherofdevil/postgres-pgvector:18-alpine
+            image: ghcr.io/godfatherofdevil/postgres-18-alpine-pgvector
           - dockerfile: ./postgres/logical.alpine.Dockerfile
-            image: ghcr.io/godfatherofdevil/postgres-wal2json:18-alpine
+            image: ghcr.io/godfatherofdevil/postgres-18-alpine-wal2json
     permissions:
       contents: read
       packages: write
