@@ -68,6 +68,7 @@ jobs:
 
           if [[ "${onnx_changed}" == "true" ]]; then
             entries+=('{"dockerfile":"./onnx/onnxruntime.alpine.Dockerfile","image_name":"onnxruntime-alpine"}')
+            entries+=('{"dockerfile":"./onnx/onnxruntime.python.Dockerfile","image_name":"onnxruntime-python"}')
           fi
 
           if (( ${#entries[@]} > 0 )); then
@@ -128,9 +129,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image_name }}
           tags: |
             type=raw,value=${{ github.event.release.tag_name }}
-            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ github.event.release.tag_name }},enable=${{ !github.event.release.prerelease }}
-            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
+            type=raw,value=latest
 
       - name: Build and push Docker images
         id: build
