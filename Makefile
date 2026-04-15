@@ -21,3 +21,11 @@ build_onnxruntime_alpine:
 .PHONY: run_onnxruntime_alpine
 run_onnxruntime_alpine:
 	docker run --rm -it --name onnxruntime_alpine_demo onnxruntime-alpine
+
+.PHONY: build_onnxruntime_python
+build_onnxruntime_python:
+	docker buildx build . -t onnxruntime-python -f onnx/onnxruntime.python.Dockerfile --load
+
+.PHONY: run_onnxruntime_python
+run_onnxruntime_python:
+	docker run --rm -it --name onnxruntime_python_demo onnxruntime-python
