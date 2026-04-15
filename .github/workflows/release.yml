@@ -2,7 +2,6 @@ name: Build & publish Docker images
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
@@ -12,20 +11,95 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  detect-images:
+    runs-on: ubuntu-latest
+    name: Detect changed image families
+    outputs:
+      has_images: ${{ steps.detect.outputs.has_images }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Detect changed directories since previous tag
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_tag="${{ github.event.release.tag_name }}"
+          previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+
+          if [[ -n "${previous_tag}" ]]; then
+            diff_range="${previous_tag}..${GITHUB_SHA}"
+            echo "Comparing ${diff_range}"
+          else
+            root_commit="$(git rev-list --max-parents=0 "${GITHUB_SHA}" | tail -n1)"
+            diff_range="${root_commit}..${GITHUB_SHA}"
+            echo "No previous tag found before ${current_tag}. Comparing ${diff_range}"
+          fi
+
+          postgres_changed=false
+          onnx_changed=false
+
+          if git diff --quiet "${diff_range}" -- postgres; then
+            echo "No changes detected under postgres/"
+          else
+            postgres_changed=true
+            echo "Changes detected under postgres/"
+          fi
+
+          if git diff --quiet "${diff_range}" -- onnx; then
+            echo "No changes detected under onnx/"
+          else
+            onnx_changed=true
+            echo "Changes detected under onnx/"
+          fi
+
+          entries=()
+
+          if [[ "${postgres_changed}" == "true" ]]; then
+            entries+=('{"dockerfile":"./postgres/pgvector.alpine.Dockerfile","image_name":"postgres-18-alpine-pgvector"}')
+            entries+=('{"dockerfile":"./postgres/logical.alpine.Dockerfile","image_name":"postgres-18-alpine-wal2json"}')
+          fi
+
+          if [[ "${onnx_changed}" == "true" ]]; then
+            entries+=('{"dockerfile":"./onnx/onnxruntime.alpine.Dockerfile","image_name":"onnxruntime-alpine"}')
+          fi
+
+          if (( ${#entries[@]} > 0 )); then
+            printf -v matrix '{"include":[%s]}' "$(IFS=,; echo "${entries[*]}")"
+            has_images=true
+          else
+            matrix='{"include":[]}'
+            has_images=false
+          fi
+
+          {
+            echo "has_images=${has_images}"
+            echo "matrix=${matrix}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Summarize skipped publish
+        if: steps.detect.outputs.has_images != 'true'
+        run: |
+          {
+            echo "### No images published"
+            echo ""
+            echo "No changes were detected under \`postgres/\` or \`onnx/\` for release tag \`${{ github.event.release.tag_name }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   build-and-push-image:
     runs-on: ubuntu-latest
     name: Publish ${{ matrix.image_name }}
-    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+    needs: detect-images
+    if: needs.detect-images.outputs.has_images == 'true'
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - dockerfile: ./postgres/pgvector.alpine.Dockerfile
-            image_name: postgres-18-alpine-pgvector
-          - dockerfile: ./postgres/logical.alpine.Dockerfile
-            image_name: postgres-18-alpine-wal2json
-          - dockerfile: ./onnx/onnxruntime.alpine.Dockerfile
-            image_name: onnxruntime-alpine
+      matrix: ${{ fromJson(needs.detect-images.outputs.matrix) }}
     permissions:
       contents: read
       packages: write
@@ -33,6 +107,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -50,10 +127,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image_name }}
           tags: |
-            type=raw,value=${{ github.event.release.tag_name || github.ref_name }}
-            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+            type=raw,value=${{ github.event.release.tag_name }}
+            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.event.release.tag_name }},enable=${{ !github.event.release.prerelease }}
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Build and push Docker images
         id: build
