@@ -24,6 +24,8 @@ jobs:
             image_name: postgres-18-alpine-pgvector
           - dockerfile: ./postgres/logical.alpine.Dockerfile
             image_name: postgres-18-alpine-wal2json
+          - dockerfile: ./onnx/onnxruntime.alpine.Dockerfile
+            image_name: onnxruntime-alpine
     permissions:
       contents: read
       packages: write
